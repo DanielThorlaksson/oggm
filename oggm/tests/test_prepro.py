@@ -1180,6 +1180,70 @@ class TestGrindelInvert(unittest.TestCase):
         np.testing.assert_allclose(ref_vol, after_vol, rtol=0.1)
 
 
+class TestKesselWFInvert(unittest.TestCase):
+
+    def setUp(self):
+
+        # test directory
+        self.testdir = os.path.join(current_dir, 'tmp_kesselwf')
+        self.rm_dir()
+
+        # Init
+        cfg.initialize()
+        cfg.PARAMS['temp_use_local_gradient'] = False
+        cfg.PARAMS['use_multiple_flowlines'] = False
+        cfg.PATHS['dem_file'] = get_demo_file('srtm_oetztal.tif')
+        cfg.PATHS['climate_file'] = get_demo_file('HISTALP_oetztal.nc')
+        cfg.PATHS['cru_dir'] = '~'
+
+    def tearDown(self):
+        pass
+        # self.rm_dir()
+
+    def rm_dir(self):
+        if os.path.exists(self.testdir):
+            shutil.rmtree(self.testdir)
+
+    @requires_py3
+    def test_invert(self):
+
+
+        rgi_file = get_demo_file('rgi_oetztal.shp')
+        entity = gpd.GeoDataFrame.from_file(rgi_file)
+        entity = entity.loc[entity.RGIID == 'RGI40-11.00787'].iloc[0]
+
+        gdir = oggm.GlacierDirectory(entity, base_dir=self.testdir)
+        gis.define_glacier_region(gdir, entity=entity)
+        gis.glacier_masks(gdir)
+        centerlines.compute_centerlines(gdir)
+        geometry.initialize_flowlines(gdir)
+        geometry.catchment_area(gdir)
+        geometry.catchment_width_geom(gdir)
+        geometry.catchment_width_correction(gdir)
+        climate.distribute_climate_data([gdir])
+        climate.mu_candidates(gdir, div_id=0)
+        hef_file = get_demo_file('mbdata_RGI40-11.00787.csv')
+        mbdf = pd.read_csv(hef_file).set_index('YEAR')
+        t_star, bias = climate.t_star_from_refmb(gdir, mbdf['ANNUAL_BALANCE'])
+        t_star = t_star[-1]
+        bias = bias[-1]
+        climate.local_mustar_apparent_mb(gdir, tstar=t_star, bias=bias)
+
+        # OK.
+        inversion.prepare_for_inversion(gdir)
+        glen_a = cfg.A
+        v, _ = inversion.invert_parabolic_bed(gdir, fs=0., glen_a=glen_a, write=True)
+
+        inversion.distribute_thickness(gdir, how='per_interpolation',
+                                       add_slope=False,
+                                       add_nc_name=True)
+
+        from oggm import graphics
+        import matplotlib.pyplot as plt
+        graphics.plot_distributed_thickness(gdir, how='per_interpolation')
+        plt.show()
+
+
 class TestCatching(unittest.TestCase):
 
     def setUp(self):
