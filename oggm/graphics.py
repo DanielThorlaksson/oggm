@@ -397,7 +397,7 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=No
     from salem import DataLevels
 
     if GTD_ID is not None:
-        # TODO: read function 
+        # TODO: read function
         df = pandas.read_pickle('/home/daniel/Dropbox/dev/data/ttt_2_rgi/11/1970/1970.p')
         dl = DataLevels(
             df.THICKNESS, nlevels=256, extend='both',
