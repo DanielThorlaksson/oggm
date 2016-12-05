@@ -354,10 +354,10 @@ def plot_inversion(gdir, ax=None, salemmap=None):
 
 @entity_task(log)
 @_plot_map
-def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None):
+def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=None):
     """Plots the result of the inversion out of a glacier directory.
 
-    Method: 'alt' or 'interp'
+    Method: 'alt' or 'interp', GTD = GlaTHiDa
     """
 
     with netCDF4.Dataset(gdir.get_filepath('gridded_data')) as nc:
@@ -390,6 +390,24 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None):
     salemmap.set_cmap(plt.get_cmap('viridis'))
     salemmap.set_plot_params(nlevels=256)
     salemmap.set_data(thick)
+
+
+    # GlaThiDa Plotting
+    import pandas
+    from salem import DataLevels
+
+    if GTD_ID is not None:
+        # TODO: read function 
+        df = pandas.read_pickle('/home/daniel/Dropbox/dev/data/ttt_2_rgi/11/1970/1970.p')
+        dl = DataLevels(
+            df.THICKNESS, nlevels=256, extend='both',
+            cmap=plt.get_cmap('viridis'),
+            vmin=np.floor(salemmap.vmin),
+            vmax=np.ceil(salemmap.vmax)) #levels=np.arange(10, 201, 10)
+        x, y = salemmap.grid.transform(df.POINT_LON.values, df.POINT_LAT.values)
+        ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)#,
+        dl.append_colorbar(ax, label='Ice thickness (m)')
+
 
     salemmap.plot(ax)
 

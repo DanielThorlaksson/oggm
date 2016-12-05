@@ -1242,37 +1242,26 @@ class TestKesselWFInvert(unittest.TestCase):
                                        add_slope=False,
                                        add_nc_name=True)
 
-        # oggm plotting routine:
+        # plotting routine:
         from oggm import graphics
         import matplotlib.pyplot as plt
-        graphics.plot_distributed_thickness(gdir, how='per_interpolation')
-        plt.savefig('/home/daniel/tempfigs/fig_alt.png')
 
-        inversion.prepare_for_inversion(gdir)
-        glen_a = cfg.A
-        v, _ = inversion.invert_parabolic_bed(gdir, fs=0., glen_a=glen_a, write=True)
+        # Here a GlaThiDa plotting routine has been added
+        graphics.plot_distributed_thickness(gdir, how='per_interpolation', GTD_ID='1970')
+        plt.savefig('/home/daniel/tempfigs/fig1.png')
 
-        inversion.distribute_thickness(gdir, how='per_interpolation',
-                                       add_slope=False,
-                                       add_nc_name=True)
-
-        graphics.plot_distributed_thickness(gdir, how='per_interpolation')
+        # inversion.prepare_for_inversion(gdir)
+        # glen_a = cfg.A
+        # v, _ = inversion.invert_parabolic_bed(gdir, fs=0., glen_a=glen_a, write=True)
+        #
+        # inversion.distribute_thickness(gdir, how='per_interpolation',
+        #                                add_slope=False,
+        #                                add_nc_name=True)
+        #
+        # graphics.plot_distributed_thickness(gdir, how='per_interpolation', GTD_ID='1970')
+        #
+        # plt.savefig('/home/daniel/tempfigs/fig2.png')
         #plt.show()
-        plt.savefig('/home/daniel/tempfigs/fig_int.png')
-
-        #temp = gdir.read_pickle('inversion_flowlines')
-
-
-        # Plotting routine for GlaThiDa points
-        #from salem import DataLevels, Map
-        #sm = Map(g.grid, factor=1, countries=False)
-        #GTD_df = pd.read_pickle('/home/daniel/Dropbox/dev/data/ttt_2_rgi/11/1970/1970.p')
-
-
-        #GTD_dl = DataLevels(GTD_df.THICKNESS, levels=np.arange(10, 201, 10), extend='both')
-        #x, y = sm.grid.transform(df.POINT_LON.values, df.POINT_LAT.values)
-        #axi.scatter(x, y, color=dl.to_rgb(), s=50, edgecolors='k', linewidths=1
-        #plt.savefig('/home/daniel/tempfigs/fig_alt.png')
 
 
 class TestCatching(unittest.TestCase):
