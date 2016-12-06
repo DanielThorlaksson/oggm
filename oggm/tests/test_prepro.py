@@ -1207,11 +1207,11 @@ class TestKesselWFInvert(unittest.TestCase):
     @requires_py3
     def test_invert(self):
 
-        #rgi_file = get_demo_file('rgi_oetztal.shp')
-        #entity = gpd.GeoDataFrame.from_file(rgi_file)
-        #entity = entity.loc[entity.RGIID == 'RGI40-11.00787'].iloc[0]
+        # rgi_file = get_demo_file('rgi_oetztal.shp')
+        # entity = gpd.GeoDataFrame.from_file(rgi_file)
+        # entity = entity.loc[entity.RGIID == 'RGI40-11.00787'].iloc[0]
 
-        # Load the RGI50 file:
+        # # Load the RGI50 file:
         entity = gpd.read_file(
             '/home/daniel/Dropbox/dev/data/rgi50/11_rgi50_CentralEurope.shp')
         entity = entity.loc[entity.RGIId == 'RGI50-11.00787'].iloc[0]
@@ -1248,19 +1248,19 @@ class TestKesselWFInvert(unittest.TestCase):
         graphics.plot_distributed_thickness(gdir, how='per_interpolation')
         plt.savefig('/home/daniel/tempfigs/fig_alt.png')
 
-        inversion.prepare_for_inversion(gdir)
-        glen_a = cfg.A
-        v, _ = inversion.invert_parabolic_bed(gdir, fs=0., glen_a=glen_a, write=True)
-
-        inversion.distribute_thickness(gdir, how='per_interpolation',
-                                       add_slope=False,
-                                       add_nc_name=True)
-
-        graphics.plot_distributed_thickness(gdir, how='per_interpolation')
-        #plt.show()
-        plt.savefig('/home/daniel/tempfigs/fig_int.png')
-
-        #temp = gdir.read_pickle('inversion_flowlines')
+        # inversion.prepare_for_inversion(gdir)
+        # glen_a = cfg.A
+        # v, _ = inversion.invert_parabolic_bed(gdir, fs=0., glen_a=glen_a, write=True)
+        #
+        # inversion.distribute_thickness(gdir, how='per_interpolation',
+        #                                add_slope=False,
+        #                                add_nc_name=True)
+        #
+        # graphics.plot_distributed_thickness(gdir, how='per_interpolation', GTD_ID='1970')
+        # #plt.show()
+        # plt.savefig('/home/daniel/tempfigs/fig_int.png')
+        #
+        # temp = gdir.read_pickle('inversion_flowlines')
 
 
         # Plotting routine for GlaThiDa points
