@@ -400,13 +400,26 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=No
         # TODO: GlaThiDa read function
         df = pandas.read_pickle('/home/daniel/Dropbox/dev/data/ttt_2_rgi/11/1970/1970.p')
         dl = DataLevels(
-            df.THICKNESS, nlevels=256, extend='both',
-            cmap=plt.get_cmap('viridis'),
+            df.THICKNESS,
+            #nlevels=256,
+            extend='both',
+            #cmap=plt.get_cmap('viridis'),
             vmin=np.floor(salemmap.vmin),
-            vmax=np.ceil(salemmap.vmax)) #levels=np.arange(10, 201, 10)
+            vmax=np.ceil(salemmap.vmax),
+            levels=np.arange(10, 201, 10))
         x, y = salemmap.grid.transform(df.POINT_LON.values, df.POINT_LAT.values)
         ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)#,
-        dl.append_colorbar(ax, label='Ice thickness (m)')
+        #dl.append_colorbar(ax, label='Ice thickness (m)')
+
+        # Temp stuff to compare the grids and points:
+        # x = x[0]
+        # y = y[0]
+        # dis = np.zeros([salemmap.grid.x_coord.shape[0], 2])
+        # dis[:, 0] = np.abs(x-salemmap.grid.x_coord)
+        # dis[:, 1] = np.abs(y-salemmap.grid.y_coord)
+        #
+        # a = 10
+        # print(dis)
 
 
     salemmap.plot(ax)

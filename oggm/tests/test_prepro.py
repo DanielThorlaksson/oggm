@@ -1245,8 +1245,9 @@ class TestKesselWFInvert(unittest.TestCase):
         # oggm plotting routine:
         from oggm import graphics
         import matplotlib.pyplot as plt
-        graphics.plot_distributed_thickness(gdir, how='per_interpolation')
-        plt.savefig('/home/daniel/tempfigs/fig_alt.png')
+        graphics.plot_distributed_thickness(gdir, how='per_interpolation', GTD_ID='1970')
+        #plt.show()
+        plt.savefig('/home/daniel/tempfigs/fig_int.png')
 
         # inversion.prepare_for_inversion(gdir)
         # glen_a = cfg.A
@@ -1258,7 +1259,7 @@ class TestKesselWFInvert(unittest.TestCase):
         #
         # graphics.plot_distributed_thickness(gdir, how='per_interpolation', GTD_ID='1970')
         # #plt.show()
-        # plt.savefig('/home/daniel/tempfigs/fig_int.png')
+        # plt.savefig('/home/daniel/tempfigs/fig1.png')
         #
         # temp = gdir.read_pickle('inversion_flowlines')
 
