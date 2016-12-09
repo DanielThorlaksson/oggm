@@ -354,7 +354,7 @@ def plot_inversion(gdir, ax=None, salemmap=None):
 
 @entity_task(log)
 @_plot_map
-def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=None):
+def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=None, Delta_GTD=False):
     """Plots the result of the inversion out of a glacier directory.
 
     Method: 'alt' or 'interp', GTD = GlaTHiDa
@@ -397,34 +397,43 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD_ID=No
     if GTD_ID is not None:
         import pandas
         from salem import DataLevels
-        # TODO: GlaThiDa read function
+        # TODO: A GlaThiDa read function
         df = pandas.read_pickle('/home/daniel/Dropbox/dev/data/ttt_2_rgi/11/1970/1970.p')
-        dl = DataLevels(
-            df.THICKNESS,
-            #nlevels=256,
-            extend='both',
-            #cmap=plt.get_cmap('viridis'),
-            vmin=np.floor(salemmap.vmin),
-            vmax=np.ceil(salemmap.vmax),
-            levels=np.arange(10, 201, 10))
+
         x, y = salemmap.grid.transform(df.POINT_LON.values, df.POINT_LAT.values)
-        ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)#,
-        #dl.append_colorbar(ax, label='Ice thickness (m)')
 
-        # Temp stuff to compare the grids and points:
-        # x = x[0]
-        # y = y[0]
-        # dis = np.zeros([salemmap.grid.x_coord.shape[0], 2])
-        # dis[:, 0] = np.abs(x-salemmap.grid.x_coord)
-        # dis[:, 1] = np.abs(y-salemmap.grid.y_coord)
-        #
-        # a = 10
-        # print(dis)
+        if not Delta_GTD:
+            dl = DataLevels(
+                df.THICKNESS,
+                nlevels=256,
+                cmap=plt.get_cmap('viridis'),
+                vmin=salemmap.vmin,
+                vmax=salemmap.vmax,
+            )
+        else:
+            ipdata = np.zeros(x.shape) # interpolated data, the values at each point
+            for i in range(x.shape[0]):
+                # Finds the color value via rounding the x and y coordinates, which means... nearest?
+                ipdata[i] = salemmap.data._get_data()[int(np.round(y[i])), int(np.round(x[i]))]
 
+            if (np.max(ipdata) == 100000002004087734272):
+                ipdata[ipdata == np.max(ipdata)] = np.nan
+
+            d_thick = df.THICKNESS - ipdata
+            dl = DataLevels(
+                d_thick,
+                extend='both',
+                cmap=plt.get_cmap('coolwarm'),
+                levels=np.arange(-100, 101, 20))
+
+        ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)
+
+        if Delta_GTD:
+            dl.append_colorbar(ax, label='GlaThiDa - OGGM inversion (m)', position='top')
 
     salemmap.plot(ax)
 
-    return dict(cbar_label='Glacier thickness [m]')
+    return dict(cbar_label='OGGM inversion thickness [m]')
 
 
 @entity_task(log)
