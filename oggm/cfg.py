@@ -100,6 +100,9 @@ GAUSSIAN_KERNEL[5] = np.array([2.63865083e-04, 1.06450772e-01,
                                2.63865083e-04])
 
 # TODO: document all files
+_doc = 'The GlaThiDa data of the current glacier'
+BASENAMES['GlaThiDa'] = ('GlaThiDa.pkl', _doc)
+
 _doc = 'A geotiff file containing the DEM (reprojected into the local grid).'
 BASENAMES['dem'] = ('dem.tif', _doc)
 
