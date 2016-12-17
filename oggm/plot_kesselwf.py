@@ -17,6 +17,8 @@ from oggm.utils import entity_task
 import oggm.cfg as cfg
 
 # Module logger
+# from sandbox.run_alaska import gdir
+
 log = logging.getLogger(__name__)
 
 def _plot_map(plotfunc):
@@ -163,3 +165,39 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD=False
     salemmap.plot(ax)
 
     return dict(cbar_label=' ')
+
+def plot_As_vs_Volume(gdir, title=None):
+    """Plots the different volumes of the glacier as a function of Glens A's"""
+    gtd = gdir.read_pickle('GlaThiDa')
+
+    if title is None:
+        title = gdir.rgi_id
+        if gdir.name is not None and gdir.name != '':
+            title += ': ' + gdir.name
+
+
+    plt.plot(gtd.glens_As, gtd.volumes/(10**9), '.b')
+    plt.title(title, loc='left')
+    plt.xlabel('Glens Creep Parameter [s$^{-1}$ Pa$^{-3}$]')
+    plt.ylabel('Volume [km$^3$]')
+
+    return
+
+def plot_As_vs_bias(gdir, title=None):
+    """Plots the different volumes of the glacier as a function of Glens A's"""
+    gtd = gdir.read_pickle('GlaThiDa')
+
+    if title is None:
+        title = gdir.rgi_id
+        if gdir.name is not None and gdir.name != '':
+            title += ': ' + gdir.name
+
+
+    plt.plot(gtd.glens_As, gtd.biases, '.b')
+    plt.plot([0, np.max(gtd.glens_As)], [0, 0], '--k')
+    #plt.ylim([-2000, 2000])
+    plt.title(title, loc='left')
+    plt.xlabel('Glens Creep Parameter [s$^{-1}$ Pa$^{-3}$]')
+    plt.ylabel('Sum of all points on glacier, Bias [m]')
+
+    return
