@@ -205,7 +205,3 @@ class TestKesselWFInversions(unittest.TestCase):
         plot_kesselwf.plot_As_vs_bias(gdir)
         plt.savefig('/home/daniel/tempfigs/Bias_vs_A.png')
 
-        from oggm import utils
-        a = utils.get_glathida_file()
-        print(a)
-
