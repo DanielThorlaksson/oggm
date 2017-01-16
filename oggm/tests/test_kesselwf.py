@@ -106,7 +106,6 @@ class TestKesselWFInvert(unittest.TestCase):
 
         gdir.write_pickle(gtd, 'GlaThiDa')
 
-
         # oggm plotting routine:
         from oggm import plot_kesselwf
         import matplotlib.pyplot as plt
@@ -205,3 +204,8 @@ class TestKesselWFInversions(unittest.TestCase):
         plt.clf()
         plot_kesselwf.plot_As_vs_bias(gdir)
         plt.savefig('/home/daniel/tempfigs/Bias_vs_A.png')
+
+        from oggm import utils
+        a = utils.get_glathida_file()
+        print(a)
+

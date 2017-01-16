@@ -193,9 +193,14 @@ def plot_As_vs_bias(gdir, title=None):
             title += ': ' + gdir.name
 
 
-    plt.plot(gtd.glens_As, gtd.biases, '.b')
+    ax1 = plt.plot(gtd.glens_As, gtd.biases, '.b')
     plt.plot([0, np.max(gtd.glens_As)], [0, 0], '--k')
-    #plt.ylim([-2000, 2000])
+    here = np.where(np.abs(gtd.biases) == np.min(np.abs(gtd.biases)))
+    plt.plot(gtd.glens_As[here], gtd.biases[here], 'xr', ms=10)
+    #plt.suptitle(title, loc='left')
+    title = title + '\nBest bias = {} [m] when A = {} '.format(
+        str(np.round(gtd.biases[here][0], decimals=1)), str(gtd.glens_As[here][0]))
+    title = title + '[s$^{-1}$ Pa$^{-3}$]'
     plt.title(title, loc='left')
     plt.xlabel('Glens Creep Parameter [s$^{-1}$ Pa$^{-3}$]')
     plt.ylabel('Sum of all points on glacier, Bias [m]')
