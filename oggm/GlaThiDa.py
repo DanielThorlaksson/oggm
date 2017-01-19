@@ -82,5 +82,11 @@ class GlaThiDa:
         self.glens_As = glen_as
         self.volumes = volumes
         self.biases = np.nansum(thick_diffs, axis=0)
+
         return self
+
+#    def optimize_bias(self, gdir):
+#        from scipy import optimize
+#        optimize.newton()
+#        a = np.max(self.biases[self.biases < 0])
 

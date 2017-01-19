@@ -181,19 +181,21 @@ class TestKesselWFInversions(unittest.TestCase):
         # Read the GlaThiDa data:
         # TODO: This needs to be some sort of funciton
 
-        # from oggm import GlaThiDa
-        #
-        # gtd = GlaThiDa.GlaThiDa()
-        # gtd = gtd.read_pickle(path='/home/daniel/Dropbox/dev/data/ttt_2_rgi',
-        #                       RGI_Reg=str(11), GlaThiDa_ID=str(1970))
-        # gtd = gtd.transform(gdir=gdir)
-        #
-        # inversion.prepare_for_inversion(gdir)
-        #
+        from oggm import GlaThiDa
+
+        gtd = GlaThiDa.GlaThiDa()
+        gtd = gtd.read_pickle(path='/home/daniel/Dropbox/dev/data/ttt_2_rgi',
+                              RGI_Reg=str(11), GlaThiDa_ID=str(1970))
+        gtd = gtd.transform(gdir=gdir)
+
+        inversion.prepare_for_inversion(gdir)
+
         # # This line runs the inversions as a loop.
         # gtd.volume_and_bias(gdir=gdir, start=0.05, stop=2.01, step=0.05)
-        #
-        # gdir.write_pickle
+
+        gtd.optimize_bias(self, gdir=gdir)
+
+        gdir.write_pickle
 
         # oggm plotting routine:
         from oggm import plot_kesselwf
@@ -204,4 +206,7 @@ class TestKesselWFInversions(unittest.TestCase):
         plt.clf()
         plot_kesselwf.plot_As_vs_bias(gdir)
         plt.savefig('/home/daniel/tempfigs/Bias_vs_A.png')
+
+        #A = inversion.optimize_inversion_params(gdir)
+        #print(A)
 
