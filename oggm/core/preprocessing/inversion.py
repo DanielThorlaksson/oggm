@@ -478,11 +478,6 @@ def _distribute_thickness_per_interp(glacier_mask, topo, cls, fls, grid,
     inter = np.array((np.ravel(yy[pnan]), np.ravel(xx[pnan]))).T
     thick[pnan] = griddata(points, np.ravel(thick[pok]), inter, method='cubic')
 
-    # Smooth
-    if smooth:
-        gsize = np.rint(cfg.PARAMS['smooth_window'] / dx)
-        thick = gaussian_blur(thick, np.int(gsize))
-        thick = np.where(glacier_mask, thick, 0.)
 
     # Slope
     slope = 1.
@@ -491,6 +486,12 @@ def _distribute_thickness_per_interp(glacier_mask, topo, cls, fls, grid,
         slope = np.arctan(np.sqrt(sy**2 + sx**2))
         slope = np.clip(slope, np.deg2rad(6.), np.pi/2.)
         slope = 1 / slope**(cfg.N / (cfg.N+2))
+
+    # Smooth
+    if smooth:
+        gsize = np.rint(cfg.PARAMS['smooth_window'] / dx)
+        thick = gaussian_blur(thick, np.int(gsize))
+        thick = np.where(glacier_mask, thick, 0.)
 
     # Conserve volume
     tmp_vol = np.nansum(thick * slope * dx**2)

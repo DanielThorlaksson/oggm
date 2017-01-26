@@ -10,6 +10,9 @@ from matplotlib.ticker import NullFormatter
 import numpy as np
 import netCDF4
 import salem
+import geopandas as gpd
+import shapely.geometry as shpg
+
 
 from oggm.utils import entity_task
 
@@ -95,6 +98,55 @@ def _plot_map(plotfunc):
 
 @entity_task(log)
 @_plot_map
+def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False):
+    """Plots the catchment widths out of a glacier directory.
+
+    """
+
+    with netCDF4.Dataset(gdir.get_filepath('gridded_data')) as nc:
+        topo = nc.variables['topo'][:]
+
+    salemmap.set_topography(topo)
+
+    # TODO: center grid or corner grid???
+    crs = gdir.grid.center_grid
+    for i in gdir.divide_ids:
+        geom = gdir.read_pickle('geometries', div_id=i)
+
+        # Plot boundaries
+        poly_pix = geom['polygon_pix']
+        salemmap.set_geometry(poly_pix, crs=crs, fc='none', zorder=2,
+                             linewidth=.2)
+        for l in poly_pix.interiors:
+            salemmap.set_geometry(l, crs=crs, color='black', linewidth=0.5)
+
+        # plot Centerlines
+        cls = gdir.read_pickle('inversion_flowlines', div_id=i)[::-1]
+        color = gpd.plotting.gencolor(len(cls) + 1, colormap='Set1')
+        for l, c in zip(cls, color):
+            salemmap.set_geometry(l.line, crs=crs, color=c,
+                                 linewidth=2.5, zorder=50)
+            if corrected:
+                for wi, cur, (n1, n2) in zip(l.widths, l.line.coords,
+                                             l.normals):
+                    l = shpg.LineString([shpg.Point(cur + wi / 2. * n1),
+                                         shpg.Point(cur + wi / 2. * n2)])
+
+                    salemmap.set_geometry(l, crs=crs, color=c,
+                                         linewidth=0.6, zorder=50)
+            else:
+                for wl, wi in zip(l.geometrical_widths, l.widths):
+                    col = c if np.isfinite(wi) else 'grey'
+                    for w in wl:
+                        salemmap.set_geometry(w, crs=crs, color=col,
+                                             linewidth=0.6, zorder=50)
+
+    salemmap.plot(ax)
+
+    return {}
+
+@entity_task(log)
+@_plot_map
 def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD=False, Delta_GTD=False):
     """Plots the result of the inversion out of a glacier directory.
 
@@ -161,6 +213,7 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD=False
 
         ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)
         dl.append_colorbar(ax, label=' ', position='right', pad=1.5)
+        print('Bias for this run is:', np.nansum(gtd.DELTA))
 
     salemmap.plot(ax)
 
@@ -206,3 +259,134 @@ def plot_As_vs_bias(gdir, title=None):
     plt.ylabel('Sum of all points on glacier, Bias [m]')
 
     return
+
+# @_plot_map
+def plot_bed_cross_sections(gdir):
+    from oggm import GlaThiDa
+
+    gtd = gdir.read_pickle('GlaThiDa')
+
+    how = 'per_interpolation'
+    grids_file = gdir.get_filepath('gridded_data', div_id=0)
+    with netCDF4.Dataset(grids_file) as nc:
+        vn = 'thickness'
+        if how is not None:
+            vn += '_' + how
+        thick = nc.variables[vn][:]
+        topo = nc.variables['topo'][:]
+        mask = nc.variables['glacier_mask'][:]
+
+    thick = np.where(mask, thick, np.NaN)
+
+    
+    # Plot the bed shape of the profiles
+    fig = plt.figure(figsize=(11, 7))
+    # ax1 = fig.add_subplot(2,1,1)
+    # Cosmetics
+    ymax = np.max(gtd.GTD_THICKNESS)
+    if (ymax < np.max(thick)):
+        ymax = np.max(thick)
+    a_ymax = ymax + 0.2 * ymax  # Abs. difference of axis
+    # find the data and xmax
+    X = np.zeros(gtd.profile_masks.shape)
+    xmax = 0
+    delta_e = 0
+    for i in range(0, gtd.profile_masks.shape[0]):
+
+        lat = gtd.POINT_LAT[gtd.profile_masks[i, :]]
+        lon = gtd.POINT_LON[gtd.profile_masks[i, :]]
+        x = np.zeros(lat.shape)
+        dis = 0
+        for j in range(1, lat.shape[0]):
+            dis = dis + GlaThiDa.Haversine_Distance(
+                lon.iloc[j - 1], lat.iloc[j - 1],
+                lon.iloc[j], lat.iloc[j])
+            x[j] = dis
+        x = x - np.mean(x)
+        if xmax < x[-1]:
+            xmax = x[-1]
+        X[i, gtd.profile_masks[i, :]] = x
+
+        topo_ = topo[gtd.j[gtd.profile_masks[i, :]], gtd.i[gtd.profile_masks[i, :]]]
+        maxele = np.max(topo_)  # max elevation of profile
+        minele = np.min(topo_)
+        delta = maxele - minele
+        if delta_e < delta:
+            delta_e = delta
+
+    a_ymax = a_ymax + delta_e
+
+    for i in range(0, gtd.profile_masks.shape[0]):
+
+        y3 = topo[gtd.j[gtd.profile_masks[i, :]], gtd.i[gtd.profile_masks[i, :]]]
+        y = gtd.GTD_THICKNESS[gtd.profile_masks[i, :]]
+        y = y3 - y
+        y2 = thick[gtd.j[gtd.profile_masks[i, :]], gtd.i[gtd.profile_masks[i, :]]]
+        y2 = y3 - y2
+        x = X[i, gtd.profile_masks[i, :]]
+        ax = plt.subplot(gtd.profile_masks.shape[0], 1, i + 1)
+        # lab_gtd = 'n: {}'.format(str(i))
+        # lab_oggm = 'I_n: {}'.format(str(i))
+        ax.plot(x, y, 'x-')
+        ax.plot(x, y2, '--x')
+        ax.plot(x, y3, '-k', linewidth=2.0)
+
+        # ax.legend()
+        ax.set_xlim([-1.05 * xmax, 1.05 * xmax])
+        if i < gtd.profile_masks.shape[0] - 1:
+            ax.tick_params(
+                axis='x',  # changes apply to the x-axis
+                which='both',  # both major and minor ticks are affected
+                # bottom='off',      # ticks along the bottom edge are off
+                # top='off',         # ticks along the top edge are off
+                labelbottom='off')  # labels along the bottom edge are off
+        if i == 0:
+            ax.set_title('Thick solid line: Surface, Solid line: GlaThiDa Measurments, Dashed line: OGGM Inversion')
+
+        ymax = np.max(y3)
+        ymin = (ymax - 1.1 * a_ymax)
+        ymax = (ymax + 0.1 * a_ymax)
+        # ymax = ymax + 0.15*a_ymax
+        # ymin = ymax - 2*a_ymax
+        # yint = 1000*range(np.round(min(y), math.ceil(max(y))+1)
+
+        ax.set_ylim([ymin, ymax])
+        ax.locator_params(axis='y', nbins=6)
+
+        ylabel = 'n: {} [m]'.format(str(i))
+        ax.set_ylabel(ylabel)
+        # ax.yaxis.set_ticks(np.arange(0, ymax-0.1*ymax, np.round(ymax/2)))
+
+    # plt.savefig('/home/daniel/tempfigs/crosssections.png', bbox_inches='tight')
+    ax.set_xlabel('[km]')
+    # plt.show()
+
+    # ax2 = fig.add_subplot(1,2,2)
+    # for i in range(0, masks.shape[0]):
+    #    lat = gtd.POINT_LAT[masks[i,:]]
+    #    lon = gtd.POINT_LON[masks[i,:]]
+    #    ax2 = plt.plot(lon, lat, '-x')
+    return
+
+def plot_profiles(gdir):
+
+    gtd = gdir.read_pickle('GlaThiDa')
+    masks = gtd.profile_masks
+
+
+    import matplotlib.cm as cm
+    colors = iter(cm.rainbow(np.linspace(0, 1, masks.shape[0])))
+
+    for i in range(masks.shape[0] + 1):
+        if i < masks.shape[0]:
+            lab = 'n: {}, N = {}'.format(str(i), np.sum(masks[i, :]))
+            plt.scatter(gtd.POINT_LON[masks[i, :]], gtd.POINT_LAT[masks[i, :]],
+                        color=next(colors), label=lab)
+        if i == masks.shape[0]:
+            mask = np.sum(masks, axis=0)
+            mask = mask.astype(bool)
+            lab = 'und. N = {}'.format(np.sum(~mask))
+            plt.scatter(gtd.POINT_LON[~mask], gtd.POINT_LAT[~mask],
+                        marker='x', color='black', label=lab)
+
+        plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))

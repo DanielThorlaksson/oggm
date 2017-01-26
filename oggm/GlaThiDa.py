@@ -14,6 +14,7 @@ class GlaThiDa:
         self.THICKNESS = None
         self.RGI_Reg = None
         self.GlaThiDa_ID = None
+        self.profile_masks = None
 
     def read_pickle(self, path, RGI_Reg, GlaThiDa_ID):
         """Reads the pickle file from the RGI GlaThiDa linkage"""
@@ -85,8 +86,79 @@ class GlaThiDa:
 
         return self
 
-#    def optimize_bias(self, gdir):
-#        from scipy import optimize
-#        optimize.newton()
-#        a = np.max(self.biases[self.biases < 0])
+        # === The follwing functions started their life in "inv_test.ipynb" ===
+    def find_measurement_profiles(self, gdir, d_tol=0.20, n_tol=5, sort=True):
+        # Here a loop will be created which will seperate the different measurement profile
+        mask = np.zeros([1, np.size(self.POINT_LAT)], dtype=bool)
+        masks = mask.copy()
+          # Tolerance in km
+        mark = 0  # marks the begining of the next profile
+        for i in range(0, len(self.POINT_LAT) - 1):
+            dis = Haversine_Distance(
+                self.POINT_LON.iloc[i], self.POINT_LAT.iloc[i],
+                self.POINT_LON.iloc[i + 1], self.POINT_LAT.iloc[i + 1])
+            if (dis > d_tol):  # & (i-mark > 0):
+                mask[0, (mark):(i + 1)] = True
+                masks = np.append(masks, mask, axis=0)
+                mask[:, :] = False
+                mark = i + 1
 
+
+
+        # Remove 'Profiles' with less than a tolerence of points
+        npoints = np.where(np.sum(masks, axis=1) > n_tol)
+        masks = masks[npoints[0], :]
+
+        if sort:
+            # Load the oggm interpolated thickness
+            how = 'per_interpolation'
+            grids_file = gdir.get_filepath('gridded_data', div_id=0)
+            with netCDF4.Dataset(grids_file) as nc:
+                vn = 'thickness'
+                if how is not None:
+                    vn += '_' + how
+                topo = nc.variables['topo'][:]
+
+            # This cell will sort the masks into elevation order, highest elevation is the first mask
+            elev = np.zeros([masks.shape[0], 2])  # elevation, profile number
+            for k in range(0, masks.shape[0]):
+                i = int(np.round(np.mean(self.i[masks[k, :]])))  # Find the characteristc point on the local grid
+                j = int(np.round(np.mean(self.j[masks[k, :]])))
+                elev[k, 0] = topo[j, i]  # Save the elevation
+                elev[k, 1] = k  # Save the mask number
+
+            # Sort it!
+            elev = np.flipud(elev[elev[:, 0].argsort()])
+            # Rearrange the masks
+            temp = np.zeros(masks.shape, dtype=bool)
+            n = 0
+            for i in elev[:, 1]:
+                temp[n, :] = masks[int(i), :]
+                n += 1
+
+            masks = temp.copy()
+
+        self.profile_masks = masks
+
+        # === The follwing functions started their life in "f_ttt2rgi.py" ===
+    # path = /home/daniel/Dropbox/ttt2rgi/
+
+def Haversine_Distance(phi1, lambda1, phi2, lambda2):
+        """The Function calculates the distance on a spherical earth and gies the
+        results in km, input is in degrees. The equation taken from wiki site,
+        Great-circle distance"""
+        # First convert to radians
+        phi1 = np.deg2rad(phi1)
+        lambda1 = np.deg2rad(lambda1)
+        phi2 = np.deg2rad(phi2)
+        lambda2 = np.deg2rad(lambda2)
+        R_earth = 6371.  # Mean radios of the earth in km
+        d = 2 * R_earth * np.arcsin(np.sqrt(np.sin((phi2 - phi1) / 2) ** 2 +
+                                            np.cos(phi1) * np.cos(phi2) *
+                                            np.sin((lambda2 - lambda1) / 2) ** 2))
+        return d;
+
+
+    #
+
+ #   def
