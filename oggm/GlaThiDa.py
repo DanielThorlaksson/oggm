@@ -84,10 +84,18 @@ class GlaThiDa:
         self.volumes = volumes
         self.biases = np.nansum(thick_diffs, axis=0)
 
+        # Save the best A of the run
+        here = np.where(np.abs(self.biases) == np.min(np.abs(self.biases)))
+        self.best_bias = self.biases[here]
+        self.best_A = self.glens_As[here]
+        self.cfg_A_multiplier = self.best_A/cfg.A
+        print('cfg A Multiplier: ', self.cfg_A_multiplier)
+
         return self
 
         # === The follwing functions started their life in "inv_test.ipynb" ===
-    def find_measurement_profiles(self, gdir, d_tol=0.20, n_tol=5, sort=True):
+    def find_measurement_profiles(self, gdir, d_tol=0.20, n_tol=5, n_max_tol=1000, sort=True,
+                                  sparsify=True, spars_max=40, max_ele_diff=None):
         # Here a loop will be created which will seperate the different measurement profile
         mask = np.zeros([1, np.size(self.POINT_LAT)], dtype=bool)
         masks = mask.copy()
@@ -105,8 +113,8 @@ class GlaThiDa:
 
 
 
-        # Remove 'Profiles' with less than a tolerence of points
-        npoints = np.where(np.sum(masks, axis=1) > n_tol)
+        # Remove 'Profiles' with more or less than a tolerence of points
+        npoints = np.where((np.sum(masks, axis=1) > n_tol)) #& (np.sum(masks, axis=1) < n_max_tol))
         masks = masks[npoints[0], :]
 
         if sort:
@@ -139,6 +147,33 @@ class GlaThiDa:
             masks = temp.copy()
 
         self.profile_masks = masks
+
+        if sparsify:
+            n_max = spars_max
+            npoints = np.sum(masks, axis=1)
+            sparse_masks = masks.copy()
+            for i in range(0, masks.shape[0]):
+                pro_start = np.where(masks[i, :])[0][0]
+                pro_end = pro_start + npoints[i] - 1
+                indexes = np.round(np.linspace(pro_start, pro_end, num=n_max))
+                indexes[0] = pro_start
+                indexes[-1] = pro_end
+                sparse_masks[i, :] = False
+                for index in indexes:
+                    sparse_masks[i, int(index)] = True
+
+                #Todo: Change to some sort of gradiant?
+                if max_ele_diff is not None:
+                    if np.abs(np.max(topo[self.j[masks[i, :]], self.i[masks[i, :]]]) -
+                                      np.min(topo[self.j[masks[i, :]], self.i[masks[i, :]]])) > max_ele_diff:
+                        sparse_masks[i, :] = False
+
+            if max_ele_diff is not None:
+                sparse_masks = sparse_masks[np.any(sparse_masks, axis=1), :]
+
+            self.full_masks = masks
+            self.profile_masks = sparse_masks
+
 
         # === The follwing functions started their life in "f_ttt2rgi.py" ===
     # path = /home/daniel/Dropbox/ttt2rgi/

@@ -5,6 +5,8 @@ import logging
 import functools
 
 import matplotlib.pyplot as plt
+import matplotlib.cm as cm
+
 from matplotlib.ticker import NullFormatter
 
 import numpy as np
@@ -245,14 +247,13 @@ def plot_As_vs_bias(gdir, title=None):
         if gdir.name is not None and gdir.name != '':
             title += ': ' + gdir.name
 
-
-    ax1 = plt.plot(gtd.glens_As, gtd.biases, '.b')
+    plt.plot(gtd.glens_As, gtd.biases, '.b')
     plt.plot([0, np.max(gtd.glens_As)], [0, 0], '--k')
-    here = np.where(np.abs(gtd.biases) == np.min(np.abs(gtd.biases)))
-    plt.plot(gtd.glens_As[here], gtd.biases[here], 'xr', ms=10)
-    #plt.suptitle(title, loc='left')
-    title = title + '\nBest bias = {} [m] when A = {} '.format(
-        str(np.round(gtd.biases[here][0], decimals=1)), str(gtd.glens_As[here][0]))
+    # here = np.where(np.abs(gtd.biases) == np.min(np.abs(gtd.biases)))
+    plt.plot(gtd.best_A, gtd.best_bias, 'xr', ms=10)
+    # plt.suptitle(title, loc='left')
+    title = title + '\nBest bias = {} [m] when A = cfg,A * {} '.format(
+        str(np.round(gtd.best_bias[0], decimals=1)), str(gtd.cfg_A_multiplier[0]))
     title = title + '[s$^{-1}$ Pa$^{-3}$]'
     plt.title(title, loc='left')
     plt.xlabel('Glens Creep Parameter [s$^{-1}$ Pa$^{-3}$]')
@@ -292,7 +293,6 @@ def plot_bed_cross_sections(gdir):
     xmax = 0
     delta_e = 0
     for i in range(0, gtd.profile_masks.shape[0]):
-
         lat = gtd.POINT_LAT[gtd.profile_masks[i, :]]
         lon = gtd.POINT_LON[gtd.profile_masks[i, :]]
         x = np.zeros(lat.shape)
@@ -351,7 +351,7 @@ def plot_bed_cross_sections(gdir):
         # yint = 1000*range(np.round(min(y), math.ceil(max(y))+1)
 
         ax.set_ylim([ymin, ymax])
-        ax.locator_params(axis='y', nbins=6)
+        ax.locator_params(axis='y', nbins=5)
 
         ylabel = 'n: {} [m]'.format(str(i))
         ax.set_ylabel(ylabel)
@@ -371,10 +371,15 @@ def plot_bed_cross_sections(gdir):
 def plot_profiles(gdir):
 
     gtd = gdir.read_pickle('GlaThiDa')
+    sparse = False
+    try:
+        test = gtd.full_masks
+        sparse = True
+    except:
+        pass
+
     masks = gtd.profile_masks
 
-
-    import matplotlib.cm as cm
     colors = iter(cm.rainbow(np.linspace(0, 1, masks.shape[0])))
 
     for i in range(masks.shape[0] + 1):
@@ -382,7 +387,7 @@ def plot_profiles(gdir):
             lab = 'n: {}, N = {}'.format(str(i), np.sum(masks[i, :]))
             plt.scatter(gtd.POINT_LON[masks[i, :]], gtd.POINT_LAT[masks[i, :]],
                         color=next(colors), label=lab)
-        if i == masks.shape[0]:
+        if (i == masks.shape[0]) & (not sparse):
             mask = np.sum(masks, axis=0)
             mask = mask.astype(bool)
             lab = 'und. N = {}'.format(np.sum(~mask))
@@ -390,3 +395,16 @@ def plot_profiles(gdir):
                         marker='x', color='black', label=lab)
 
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+
+    return
+
+def plot_points_viridis(gdir):
+
+    gtd = gdir.read_pickle('GlaThiDa')
+
+    colors = iter(cm.viridis(np.linspace(0, 1, len(gtd.POINT_LON))))
+    for i in range(0, len(gtd.POINT_LON)):
+        plt.scatter(gtd.POINT_LON.iloc[i], gtd.POINT_LAT.iloc[i], color=next(colors))
+
+    return
+
