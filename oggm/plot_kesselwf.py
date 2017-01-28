@@ -6,6 +6,8 @@ import functools
 
 import matplotlib.pyplot as plt
 import matplotlib.cm as cm
+import matplotlib.patches as mpatches
+
 
 from matplotlib.ticker import NullFormatter
 
@@ -100,7 +102,7 @@ def _plot_map(plotfunc):
 
 @entity_task(log)
 @_plot_map
-def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False):
+def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False, GlaThiDa_profiles=False, sparse=True):
     """Plots the catchment widths out of a glacier directory.
 
     """
@@ -142,6 +144,27 @@ def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False):
                     for w in wl:
                         salemmap.set_geometry(w, crs=crs, color=col,
                                              linewidth=0.6, zorder=50)
+
+        if GlaThiDa_profiles:
+
+            gtd = gdir.read_pickle('GlaThiDa')
+            masks = gtd.profile_masks
+
+            colors = iter(cm.rainbow(np.linspace(0, 1, masks.shape[0])))
+
+            for i in range(masks.shape[0] + 1):
+                if i < masks.shape[0]:
+                    lab = 'n: {} \nN = {}'.format(str(i), np.sum(masks[i, :]))
+                    ax.scatter(gtd.i[masks[i, :]], gtd.j[masks[i, :]],
+                                color=next(colors), label=lab)
+                if (i == masks.shape[0]) & (not sparse):
+                    mask = np.sum(masks, axis=0)
+                    mask = mask.astype(bool)
+                    lab = 'undef. \nN = {}'.format(np.sum(~mask))
+                    ax.scatter(gtd.j[~mask], gtd.i[~mask],
+                                marker='x', color='black', label=lab)
+
+                ax.legend(bbox_to_anchor=(1., 1.), loc=2)
 
     salemmap.plot(ax)
 
@@ -281,7 +304,7 @@ def plot_bed_cross_sections(gdir):
 
     
     # Plot the bed shape of the profiles
-    fig = plt.figure(figsize=(11, 7))
+    fig = plt.figure(figsize=(7, 10))
     # ax1 = fig.add_subplot(2,1,1)
     # Cosmetics
     ymax = np.max(gtd.GTD_THICKNESS)
@@ -325,11 +348,9 @@ def plot_bed_cross_sections(gdir):
         y2 = y3 - y2
         x = X[i, gtd.profile_masks[i, :]]
         ax = plt.subplot(gtd.profile_masks.shape[0], 1, i + 1)
-        # lab_gtd = 'n: {}'.format(str(i))
-        # lab_oggm = 'I_n: {}'.format(str(i))
-        ax.plot(x, y, 'x-')
-        ax.plot(x, y2, '--x')
-        ax.plot(x, y3, '-k', linewidth=2.0)
+        l1 = ax.plot(x, y, 'x-')
+        l2 = ax.plot(x, y2, '--x')
+        l3 = ax.plot(x, y3, '-k', linewidth=2.0)
 
         # ax.legend()
         ax.set_xlim([-1.05 * xmax, 1.05 * xmax])
@@ -337,38 +358,35 @@ def plot_bed_cross_sections(gdir):
             ax.tick_params(
                 axis='x',  # changes apply to the x-axis
                 which='both',  # both major and minor ticks are affected
-                # bottom='off',      # ticks along the bottom edge are off
-                # top='off',         # ticks along the top edge are off
                 labelbottom='off')  # labels along the bottom edge are off
         if i == 0:
-            ax.set_title('Thick solid line: Surface, Solid line: GlaThiDa Measurments, Dashed line: OGGM Inversion')
+            ax.set_title('Glacier cross sections \n Y axes: m a.s.l. and are not equal', loc='left')
 
         ymax = np.max(y3)
         ymin = (ymax - 1.1 * a_ymax)
         ymax = (ymax + 0.1 * a_ymax)
-        # ymax = ymax + 0.15*a_ymax
-        # ymin = ymax - 2*a_ymax
-        # yint = 1000*range(np.round(min(y), math.ceil(max(y))+1)
 
-        ax.set_ylim([ymin, ymax])
-        ax.locator_params(axis='y', nbins=5)
+        #ax.set_ylim([ymin, ymax])
+        ax.locator_params(axis='y', nbins=4)
 
-        ylabel = 'n: {} [m]'.format(str(i))
+        ylabel = 'n: {}'.format(str(i)) # is [m] necessary?
         ax.set_ylabel(ylabel)
-        # ax.yaxis.set_ticks(np.arange(0, ymax-0.1*ymax, np.round(ymax/2)))
 
-    # plt.savefig('/home/daniel/tempfigs/crosssections.png', bbox_inches='tight')
+    surface = mpatches.Patch(color='black', label=['Glacier Surface'])
+    oggm = mpatches.Patch(color='green', label=['OGGM Inversion'])
+    GlThDa = mpatches.Patch(color='blue')
+    # plt.legend(handles=[red_patch])
+    fig.legend(handles=[surface, oggm, GlThDa], labels=['Surface', 'OGGM', 'GlaThiDa'], loc=3,
+               mode='expand', ncol=3)
+               # bbox_to_anchor=(0., 1.02, 1., .102), loc=2,
+               # ncol=3, mode="expand", borderaxespad=0.)
     ax.set_xlabel('[km]')
-    # plt.show()
 
-    # ax2 = fig.add_subplot(1,2,2)
-    # for i in range(0, masks.shape[0]):
-    #    lat = gtd.POINT_LAT[masks[i,:]]
-    #    lon = gtd.POINT_LON[masks[i,:]]
-    #    ax2 = plt.plot(lon, lat, '-x')
     return
 
 def plot_profiles(gdir):
+
+    fig = plt.figure(figsize=(7, 5))
 
     gtd = gdir.read_pickle('GlaThiDa')
     sparse = False
@@ -395,16 +413,21 @@ def plot_profiles(gdir):
                         marker='x', color='black', label=lab)
 
         plt.legend(loc='center left', bbox_to_anchor=(1, 0.5))
+        plt.axis('equal')
 
     return
 
 def plot_points_viridis(gdir):
+
+    fig = plt.figure(figsize=(5, 5))
 
     gtd = gdir.read_pickle('GlaThiDa')
 
     colors = iter(cm.viridis(np.linspace(0, 1, len(gtd.POINT_LON))))
     for i in range(0, len(gtd.POINT_LON)):
         plt.scatter(gtd.POINT_LON.iloc[i], gtd.POINT_LAT.iloc[i], color=next(colors))
+
+    plt.axis('equal')
 
     return
 

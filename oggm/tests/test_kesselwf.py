@@ -161,17 +161,18 @@ class TestKesselWFInversions(unittest.TestCase):
         # entity = entity.loc[entity.RGIID == 'RGI40-11.00787'].iloc[0]
         dryrun = False
         gtd_loops = False
-        best_bias = 5.57
+        plot_only = False
+        best_bias = 8.81 # The best multiplier for the cfg.A
         # Init: === Preparing to make this into a function which takes these varibles to plot any GlaThiDa glacier
 
-        GlaThiDa_ID = str(497)
+        GlaThiDa_ID = str(1962)
         GlaThiDa_Path = '/home/daniel/Dropbox/dev/data/ttt_2_rgi'
         RGI_Region  = str(11)
-        RGI_ID = 'RGI50-11.02789'
+        RGI_ID = 'RGI50-11.00887'
         RGI_Region_shp = '/home/daniel/Dropbox/dev/data/rgi50/11_rgi50_CentralEurope.shp'
 
         path = '/home/daniel/tempfigs/'
-        path = path + 'FINDELEN/'
+        path = path + 'GURGLER/'
 
         # # Load the RGI50 file:
         entity = gpd.read_file(RGI_Region_shp)
@@ -205,30 +206,33 @@ class TestKesselWFInversions(unittest.TestCase):
 
         from oggm import GlaThiDa
 
-        gtd = GlaThiDa.GlaThiDa()
-        gtd = gtd.read_pickle(path=GlaThiDa_Path, RGI_Reg=RGI_Region, GlaThiDa_ID=GlaThiDa_ID)
-        gtd = gtd.transform(gdir=gdir)
+        if not plot_only:
+            gtd = GlaThiDa.GlaThiDa()
+            gtd = gtd.read_pickle(path=GlaThiDa_Path, RGI_Reg=RGI_Region, GlaThiDa_ID=GlaThiDa_ID)
+            gtd = gtd.transform(gdir=gdir)
 
-        inversion.prepare_for_inversion(gdir)
+            inversion.prepare_for_inversion(gdir)
 
-        # ======= The necessary steps to plot a single glacier! =========
-        v, _ = inversion.invert_parabolic_bed(
-            gdir, fs=0., glen_a=best_bias*cfg.A, write=True)
+            # ======= The necessary steps to plot a single glacier! =========
+            v, _ = inversion.invert_parabolic_bed(
+                gdir, fs=0., glen_a=best_bias*cfg.A, write=True)
 
-        inversion.distribute_thickness(gdir, how='per_interpolation',
-                                       add_slope=False,
-                                       add_nc_name=True,
-                                       smooth=True)
+            inversion.distribute_thickness(gdir, how='per_interpolation',
+                                           add_slope=False,
+                                           add_nc_name=True,
+                                           smooth=True)
 
         # # This line runs the inversions as a loop.
         if dryrun | gtd_loops:
-            gtd.volume_and_bias(gdir=gdir, start=5.56, stop=5.58, step=0.01)
+            gtd.volume_and_bias(gdir=gdir, start=8.8, stop=8.91, step=0.01)
 
-        gtd = gtd.Delta_Thickness(gdir=gdir)
+        if not plot_only:
 
-        gtd.find_measurement_profiles(gdir, sort=True, d_tol=0.5, n_tol=3, max_ele_diff=200)
+            gtd = gtd.Delta_Thickness(gdir=gdir)
 
-        gdir.write_pickle(gtd, 'GlaThiDa')
+            gtd.find_measurement_profiles(gdir, sort=True, d_tol=0.6, n_tol=3, max_ele_diff=3000)
+
+            gdir.write_pickle(gtd, 'GlaThiDa')
 
 
 
@@ -265,17 +269,17 @@ class TestKesselWFInversions(unittest.TestCase):
             plt.savefig(name)
             plt.clf()
 
-            plot_kesselwf.plot_profiles(gdir)
-            name = path + 'profiles.png'
-            plt.savefig(name, bbox_inches='tight')
-            plt.clf()
+            # plot_kesselwf.plot_profiles(gdir)
+            # name = path + 'profiles.png'
+            # plt.savefig(name, bbox_inches='tight')
+            # plt.clf()
 
-            plot_kesselwf.plot_points_viridis(gdir)
-            name = path + 'points.png'
-            plt.savefig(name)
-            plt.clf()
-
-            plot_kesselwf.plot_catchment_width(gdir, corrected=True)
+            # plot_kesselwf.plot_points_viridis(gdir)
+            # name = path + 'points.png'
+            # plt.savefig(name)
+            # plt.clf()
+            # #
+            plot_kesselwf.plot_catchment_width(gdir, corrected=True, GlaThiDa_profiles=True, sparse=False)
             name = path + 'catchment.png'
             plt.savefig(name)
             plt.clf()
