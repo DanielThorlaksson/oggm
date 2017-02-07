@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
 import netCDF4
+from scipy import optimize as optimization
 
 import oggm.cfg as cfg
 from oggm.core.preprocessing import inversion
+
 
 class GlaThiDa:
     """A class to store the GlaThiDa data and whith methods to compare GlaThiDa with OGGM output"""
@@ -35,7 +37,8 @@ class GlaThiDa:
         return self
 
     def Delta_Thickness(self, gdir):
-        """Findes the difference of the oggm model output and the GlaThiDa points"""
+        """Findes the difference of the oggm model output and the GlaThiDa points
+        ====> becoming obsolete, moved to 'best bias' """
         self.OGGM_THICK = np.zeros(self.GTD_THICKNESS.shape)
         self.DELTA = np.zeros(self.GTD_THICKNESS.shape)
 
@@ -64,7 +67,8 @@ class GlaThiDa:
 
     def volume_and_bias(self, gdir, start=0.9, stop=1.11, step=0.05):
         """Runs loops to be able to later plot different volumes and biases as a funciton of A \n
-        the three kwargs refer to numpy arrange, that is what values is cfg.A multiplied with"""
+        the three kwargs refer to numpy arrange, that is what values is cfg.A multiplied with
+        ===> becoming obsolete"""
 
         glen_as = cfg.A*np.arange(start, stop, step)
         volumes = np.zeros(glen_as.shape)
@@ -82,7 +86,7 @@ class GlaThiDa:
 
         self.glens_As = glen_as
         self.volumes = volumes
-        self.biases = np.nansum(thick_diffs, axis=0)
+        self.biases = np.nanmean(thick_diffs, axis=0)
 
         # Save the best A of the run
         here = np.where(np.abs(self.biases) == np.min(np.abs(self.biases)))
@@ -93,8 +97,90 @@ class GlaThiDa:
 
         return self
 
+    def best_bias(self, gdir, beta_min=0.1, beta_max=10, n_bands=10):
+        """WIP: Finds the best bias with optimization, where the bias is a virtual bias with elevation weights. """
+
+        # Read the major flowline
+        fl = gdir.read_pickle('inversion_flowlines', div_id=-1)
+        # sparsify to 10 bands
+        # on second thought, I think this should be defined exactly as the flowlines
+        # on a third thought, the centerlines-flowlines defnitions is not quite that simple ...
+        indexes = np.round(np.linspace(0, len(fl[0].surface_h)-1, num=(n_bands+1))).astype(int)
+        elevations = fl[0].surface_h[indexes]
+
+
+        # load the topo, GlaThiDa usually has elevation also saved. However to be "locally constant" the OGGM DEM on
+        # the glacier grid will be used.
+        grids_file = gdir.get_filepath('gridded_data', div_id=0)
+        with netCDF4.Dataset(grids_file) as nc:
+            topo = nc.variables['topo'][:]
+
+        df = pd.DataFrame()
+        df['i'] = self.i
+        df['j'] = self.j
+        df['GTD_THICKNESS'] = self.GTD_THICKNESS.values
+        df['ele'] = np.NaN
+        for point in df.itertuples():
+            df.loc[point.Index, 'ele'] = topo[point.j, point.i]
+
+        # The elevations are from highest down to lowest!
+        df['ele_band'] = -1
+        for k in range(1, n_bands):
+            df.loc[(df.ele <= elevations[k-1]) & (df.ele > elevations[k]), 'ele_band'] = k
+
+        # Points still with -1 are outside of glacier... play no role in bias
+        df = df.loc[df.ele_band != -1]
+
+        # Here starts the job starts
+        def to_optimize(x):
+
+            V, a = inversion.invert_parabolic_bed(
+                    gdir, fs=0., glen_a=cfg.A*x, write=True)
+
+            inversion.distribute_thickness(gdir, how='per_interpolation',
+                                           add_slope=False,
+                                           add_nc_name=True)
+
+            how = 'per_interpolation'
+            with netCDF4.Dataset(gdir.get_filepath('gridded_data')) as nc:
+                mask = nc.variables['glacier_mask'][:]
+
+            grids_file = gdir.get_filepath('gridded_data', div_id=0)
+            with netCDF4.Dataset(grids_file) as nc:
+                vn = 'thickness'
+                if how is not None:
+                    vn += '_' + how
+                thick = nc.variables[vn][:]
+
+            thick = np.where(mask, thick, np.NaN)
+
+            df['OGGM_THICK'] = -1000
+            for point in df.itertuples():
+                df.loc[point.Index, 'OGGM_THICK'] = thick[point.j, point.i]
+
+            df['Delta_thick'] = df.OGGM_THICK - df.GTD_THICKNESS
+
+            runner = df.drop_duplicates('ele_band')
+            bias = 0
+            for ele in runner.itertuples():
+                # is it worth anything to store the individual biases for each range?
+                # here the bias is calculated, each "elevation band" is equally important for the total
+                bias = bias + np.nanmean(df.loc[df.ele_band == ele.ele_band, 'Delta_thick'])
+
+            print('Bias is:', bias)
+            print('Multiplier is:', x)
+
+            return bias
+
+        opti = optimization.brenth(to_optimize, a=beta_min, b=beta_max, xtol=0.01)
+
+        self.best_A = cfg.A * opti
+        self.multiplier = opti
+
+        return self
+
         # === The follwing functions started their life in "inv_test.ipynb" ===
-    def find_measurement_profiles(self, gdir, d_tol=0.20, n_tol=5, n_max_tol=1000, sort=True,
+    def find_measurement_profiles(self, gdir, d_tol=0.20, n_tol=5, sort=True,
                                   sparsify=True, spars_max=40, max_ele_diff=None):
         # Here a loop will be created which will seperate the different measurement profile
         mask = np.zeros([1, np.size(self.POINT_LAT)], dtype=bool)
@@ -193,7 +279,3 @@ def Haversine_Distance(phi1, lambda1, phi2, lambda2):
                                             np.sin((lambda2 - lambda1) / 2) ** 2))
         return d;
 
-
-    #
-
- #   def

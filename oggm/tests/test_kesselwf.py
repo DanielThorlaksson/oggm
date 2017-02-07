@@ -140,7 +140,7 @@ class TestKesselWFInversions(unittest.TestCase):
         # Init
         cfg.initialize()
         cfg.PARAMS['temp_use_local_gradient'] = False
-        cfg.PARAMS['use_multiple_flowlines'] = True
+        cfg.PARAMS['use_multiple_flowlines'] = False
         cfg.PATHS['dem_file'] = '/home/daniel/Dropbox/dev/data/Climate_and_DEM/srtm_90m_v4_alps.tif'
         cfg.PATHS['climate_file'] = '/home/daniel/Dropbox/dev/data/Climate_and_DEM/histalp_merged_hydro_yrs.nc'
         cfg.PATHS['cru_dir'] = '~'
@@ -160,19 +160,19 @@ class TestKesselWFInversions(unittest.TestCase):
         # entity = gpd.GeoDataFrame.from_file(rgi_file)
         # entity = entity.loc[entity.RGIID == 'RGI40-11.00787'].iloc[0]
         dryrun = False
-        gtd_loops = False
+        gtd_loops = True
         plot_only = False
-        best_bias = 8.81 # The best multiplier for the cfg.A
+        best_bias = 5.57 # The best multiplier for the cfg.A
         # Init: === Preparing to make this into a function which takes these varibles to plot any GlaThiDa glacier
 
-        GlaThiDa_ID = str(1962)
+        GlaThiDa_ID = str(497)
         GlaThiDa_Path = '/home/daniel/Dropbox/dev/data/ttt_2_rgi'
         RGI_Region  = str(11)
-        RGI_ID = 'RGI50-11.00887'
+        RGI_ID = 'RGI50-11.02789'
         RGI_Region_shp = '/home/daniel/Dropbox/dev/data/rgi50/11_rgi50_CentralEurope.shp'
 
         path = '/home/daniel/tempfigs/'
-        path = path + 'GURGLER/'
+        path = path + 'FINDELEN/'
 
         # # Load the RGI50 file:
         entity = gpd.read_file(RGI_Region_shp)
@@ -206,6 +206,7 @@ class TestKesselWFInversions(unittest.TestCase):
 
         from oggm import GlaThiDa
 
+
         if not plot_only:
             gtd = GlaThiDa.GlaThiDa()
             gtd = gtd.read_pickle(path=GlaThiDa_Path, RGI_Reg=RGI_Region, GlaThiDa_ID=GlaThiDa_ID)
@@ -222,15 +223,18 @@ class TestKesselWFInversions(unittest.TestCase):
                                            add_nc_name=True,
                                            smooth=True)
 
+            gtd.best_bias(gdir)
+
         # # This line runs the inversions as a loop.
         if dryrun | gtd_loops:
-            gtd.volume_and_bias(gdir=gdir, start=8.8, stop=8.91, step=0.01)
+            gtd.volume_and_bias(gdir=gdir, start=5.55, stop=5.60, step=0.01)
 
         if not plot_only:
 
             gtd = gtd.Delta_Thickness(gdir=gdir)
 
-            gtd.find_measurement_profiles(gdir, sort=True, d_tol=0.6, n_tol=3, max_ele_diff=3000)
+            gtd.find_measurement_profiles(gdir, sort=True, d_tol=0.5, n_tol=5, max_ele_diff=200,
+                                          sparsify=True)
 
             gdir.write_pickle(gtd, 'GlaThiDa')
 
@@ -258,29 +262,29 @@ class TestKesselWFInversions(unittest.TestCase):
             plt.savefig(name)
             plt.clf()
 
-            plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', Delta_GTD=True,
-                                                title_comment='\n Left: OGGM inversion thickness [m] \n Right: OGGM inversion - GlaThiDa[m]')
-            name = path + 'fig_Delta.png'
+            plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', Delta_GTD=True) #,
+#                                                title_comment='\n Left: OGGM inversion thickness [m] \n Right: OGGM inversion - GlaThiDa[m]')
+            name = path + 'fig_Delta.pdf'
             plt.savefig(name)
             plt.clf()
 
             plot_kesselwf.plot_bed_cross_sections(gdir)
-            name = path + 'cross_sections.png'
+            name = path + 'cross_sections.pdf'
             plt.savefig(name)
             plt.clf()
 
-            # plot_kesselwf.plot_profiles(gdir)
-            # name = path + 'profiles.png'
-            # plt.savefig(name, bbox_inches='tight')
-            # plt.clf()
+            plot_kesselwf.plot_profiles(gdir)
+            name = path + 'profiles.png'
+            plt.savefig(name, bbox_inches='tight')
+            plt.clf()
 
             # plot_kesselwf.plot_points_viridis(gdir)
             # name = path + 'points.png'
             # plt.savefig(name)
             # plt.clf()
             # #
-            plot_kesselwf.plot_catchment_width(gdir, corrected=True, GlaThiDa_profiles=True, sparse=False)
-            name = path + 'catchment.png'
+            plot_kesselwf.plot_catchment_width(gdir, corrected=True, GlaThiDa_profiles=True, sparse=True)
+            name = path + 'catchment.pdf'
             plt.savefig(name)
             plt.clf()
 

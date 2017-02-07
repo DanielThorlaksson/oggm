@@ -102,7 +102,7 @@ def _plot_map(plotfunc):
 
 @entity_task(log)
 @_plot_map
-def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False, GlaThiDa_profiles=False, sparse=True):
+def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False, GlaThiDa_profiles=False, sparse=False):
     """Plots the catchment widths out of a glacier directory.
 
     """
@@ -161,10 +161,10 @@ def plot_catchment_width(gdir, ax=None, salemmap=None, corrected=False, GlaThiDa
                     mask = np.sum(masks, axis=0)
                     mask = mask.astype(bool)
                     lab = 'undef. \nN = {}'.format(np.sum(~mask))
-                    ax.scatter(gtd.j[~mask], gtd.i[~mask],
+                    ax.scatter(gtd.i[~mask], gtd.j[~mask],
                                 marker='x', color='black', label=lab)
 
-                ax.legend(bbox_to_anchor=(1., 1.), loc=2)
+                ax.legend(bbox_to_anchor=(0.87, 0.97), loc=2)
 
     salemmap.plot(ax)
 
@@ -237,12 +237,12 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD=False
             levels=np.arange(-100, 101, 20))
 
         ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)
-        dl.append_colorbar(ax, label=' ', position='right', pad=1.5)
-        print('Bias for this run is:', np.nansum(gtd.DELTA))
+        dl.append_colorbar(ax, label=' ', position='right', pad=1)
+        print('Bias for this run is:', np.nanmean(gtd.DELTA))
 
     salemmap.plot(ax)
 
-    return dict(cbar_label=' ')
+    return dict(cbar_label='  ')
 
 def plot_As_vs_Volume(gdir, title=None):
     """Plots the different volumes of the glacier as a function of Glens A's"""
@@ -371,7 +371,6 @@ def plot_bed_cross_sections(gdir):
 
         ylabel = 'n: {}'.format(str(i)) # is [m] necessary?
         ax.set_ylabel(ylabel)
-
     surface = mpatches.Patch(color='black', label=['Glacier Surface'])
     oggm = mpatches.Patch(color='green', label=['OGGM Inversion'])
     GlThDa = mpatches.Patch(color='blue')
@@ -381,6 +380,7 @@ def plot_bed_cross_sections(gdir):
                # bbox_to_anchor=(0., 1.02, 1., .102), loc=2,
                # ncol=3, mode="expand", borderaxespad=0.)
     ax.set_xlabel('[km]')
+
 
     return
 
