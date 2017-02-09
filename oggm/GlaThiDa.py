@@ -130,6 +130,8 @@ class GlaThiDa:
 
         # Points still with -1 are outside of glacier... play no role in bias
         df = df.loc[df.ele_band != -1]
+        # Is this nececcary? it will alsways be close to zero
+        self.best_ele_bias = 100 # This will be updated within the optimization loop
 
         # Here starts the job starts
         def to_optimize(x):
@@ -167,12 +169,16 @@ class GlaThiDa:
                 # here the bias is calculated, each "elevation band" is equally important for the total
                 bias = bias + np.nanmean(df.loc[df.ele_band == ele.ele_band, 'Delta_thick'])
 
-            print('Bias is:', bias)
-            print('Multiplier is:', x)
+            if np.abs(self.best_ele_bias) > np.abs(bias):
+                self.best_ele_bias = bias
 
             return bias
 
-        opti = optimization.brenth(to_optimize, a=beta_min, b=beta_max, xtol=0.01)
+        try:
+            opti = optimization.brenth(to_optimize, a=beta_min, b=beta_max, xtol=0.01, disp=True)
+        except:
+            # Wild guess here
+            opti = 0.1
 
         self.best_A = cfg.A * opti
         self.multiplier = opti

@@ -1253,6 +1253,7 @@ def glacier_characteristics(gdirs):
         d['cenlon'] = gdir.cenlon
         d['cenlat'] = gdir.cenlat
         d['rgi_area_km2'] = gdir.rgi_area_km2
+        d['rgi_date'] = gdir.rgi_date
         d['glacier_type'] = gdir.glacier_type
         d['terminus_type'] = gdir.terminus_type
 
@@ -1559,10 +1560,10 @@ class GlacierDirectory(object):
 
         # convert the date
         try:
-            rgi_date = pd.to_datetime(rgi_datestr[0:6],
-                                      errors='raise', format='%Y%m')
+            rgi_date = pd.to_datetime(rgi_datestr[0:4],
+                                      errors='raise', format='%Y')
         except:
-            rgi_date = pd.to_datetime('200301', format='%Y%m')
+            rgi_date = None
         self.rgi_date = rgi_date
 
         self.dir = os.path.join(base_dir, self.rgi_id)

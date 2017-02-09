@@ -238,7 +238,8 @@ def plot_distributed_thickness(gdir, ax=None, salemmap=None, how=None, GTD=False
 
         ax.scatter(x, y, s=30, color=dl.to_rgb(), edgecolors='k', linewidths=1)
         dl.append_colorbar(ax, label=' ', position='right', pad=1)
-        print('Bias for this run is:', np.nanmean(gtd.DELTA))
+        # Not true anymore, the bias is now biases with regards to elevation
+        # print('Bias for this run is:', np.nanmean(gtd.DELTA))
 
     salemmap.plot(ax)
 
