@@ -167,7 +167,13 @@ class GlaThiDa:
             for ele in runner.itertuples():
                 # is it worth anything to store the individual biases for each range?
                 # here the bias is calculated, each "elevation band" is equally important for the total
-                bias = bias + np.nanmean(df.loc[df.ele_band == ele.ele_band, 'Delta_thick'])
+                try:
+                    weight = np.nanmean(df.loc[df.ele_band == ele.ele_band, 'Delta_thick'])
+                except:
+                    print('Glacier: {}, \n ele band {}, has no non NaN point'.format(RGI_ID, str(ele)))
+                    weight = 0
+
+                bias += weight
 
             if np.abs(self.best_ele_bias) > np.abs(bias):
                 self.best_ele_bias = bias

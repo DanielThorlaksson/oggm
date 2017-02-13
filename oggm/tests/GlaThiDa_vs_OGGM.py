@@ -29,23 +29,24 @@ def GlaTHiDa_with_TTT():
 
     # read the GlaThiDa_RGI linkage from the alps
     all_points = pd.read_csv('~/Dropbox/dev/data/GlaThiDa_2016/TTT_RGI_temporal_Alps.csv')
-    glaciers = all_points.drop_duplicates('GlaThiDa_ID').copy()
+    glaciers = all_points.drop_duplicates('rgi_id').copy()
     print('Raw number of glaciers: ', glaciers.shape[0])
     # I am not quite sure how mulitple RGI shapes work, for now I throw them out
     # which is not good, I am loosing more than half with that, need to find a work around
 
-    glaciers['multiple_RGI'] = False
+    # glaciers['multiple_RGI'] = False
     # BEFORE DOING THIS: YOU NEED TO THROW OUT THE POINTS WHICH ARE OUTSIDE OF GLACIERS!!!
-    for glacier in glaciers.itertuples():
-        tmp = all_points.loc[all_points.GlaThiDa_ID == glacier.GlaThiDa_ID]
-        tmp = tmp.drop_duplicates('rgi_id')
-        if tmp.shape[0] > 1:
-            glaciers.loc[glacier.Index, 'multiple_RGI'] = True
-    glaciers = glaciers[~glaciers.multiple_RGI].copy()
+    glaciers = glaciers.loc[glaciers.found, :]
+    # for glacier in glaciers.itertuples():
+    #     tmp = all_points.loc[all_points.GlaThiDa_ID == glacier.GlaThiDa_ID]
+    #     tmp = tmp.drop_duplicates('rgi_id')
+    #     if tmp.shape[0] > 1:
+    #         glaciers.loc[glacier.Index, 'multiple_RGI'] = True
+    # glaciers = glaciers[~glaciers.multiple_RGI].copy()
     print('N single RGI shapes:', glaciers.shape[0])
 
     glaciers['Delta_Time'] = glaciers.SURVEY_DATE - glaciers.rgi_survey_date
-    glaciers = glaciers.loc[np.abs(glaciers.Delta_Time) < 10]
+    glaciers = glaciers.loc[np.abs(glaciers.Delta_Time) < 11]
     print('N temporally filtered glaciers:', glaciers.shape[0])
 
     RGI_Region_shp = '/home/daniel/Dropbox/dev/data/rgi50/11_rgi50_CentralEurope.shp'
@@ -133,13 +134,14 @@ def GlaTHiDa_with_TTT():
         gtd.Delta_Thickness(gdir)
         gdir.write_pickle(gtd, 'GlaThiDa')
 
-        to_write = pd.DataFrame(index=[1], columns=['GlaThiDa_ID'])
+        to_write = oggm.utils.single_glacier_characteristics(gdir=gdir)
+        # to_write = pd.DataFrame(index=[1], columns=['RGI_ID'])
+        # to_write['RGI_ID'] = RGI_ID
         to_write['GlaThiDa_ID'] = gtd.GlaThiDa_ID
-        to_write['RGI_ID'] = RGI_ID
         to_write['best_A'] = gtd.best_A
         to_write['multiplier'] = gtd.multiplier
-        to_write['Volume'] = v
-        to_write['Area'] = gdir.rgi_area_km2 * 1e6
+        to_write['My_Volume'] = v
+        to_write['My_Area'] = gdir.rgi_area_km2 * 1e6
         name = current_dir + '/GlaThiDa_OGGM_data.csv'
 
         if os.path.isfile(name):
@@ -156,14 +158,13 @@ def GlaTHiDa_with_TTT():
             os.makedirs(fig_path)
 
         plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', GTD=True)
-        name = '{}{}_same{}'.format(fig_path, GlaThiDa_ID, fig_ext)
         #name = fig_path + 'fig_same.png'
-        plt.savefig(name)
+        plt.savefig('{}{}_same{}'.format(fig_path, RGI_ID, fig_ext))
         plt.clf()
 
         plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', Delta_GTD=True) #,
                                                     # title_comment='\n Left: OGGM inversion thickness [m] \n Right: OGGM inversion - GlaThiDa[m]')
-        name = '{}{}_Delta{}'.format(fig_path, GlaThiDa_ID, fig_ext)
+        name = '{}{}_Delta{}'.format(fig_path, RGI_ID, fig_ext)
         plt.savefig(name)
         plt.clf()
         #
@@ -189,7 +190,7 @@ def GlaTHiDa_with_TTT():
         #             # plt.clf()
         #             # #
         plot_kesselwf.plot_catchment_width(gdir, corrected=True, GlaThiDa_profiles=False, sparse=False)
-        name = '{}{}_catchment{}'.format(fig_path, GlaThiDa_ID, fig_ext)
+        name = '{}{}_catchment{}'.format(fig_path, RGI_ID, fig_ext)
         plt.savefig(name)
         plt.clf()
 
