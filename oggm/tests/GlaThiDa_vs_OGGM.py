@@ -57,7 +57,7 @@ def GlaTHiDa_with_TTT():
     run_dir = os.path.join(current_dir, 'GlaThiDa_run')
     entities = gpd.read_file(RGI_Region_shp)
 
-    #glaciers = glaciers.iloc[1:3, :]
+    # glaciers = glaciers.iloc[1:3, :]
 
     for glacier in glaciers.itertuples():
 
@@ -113,7 +113,7 @@ def GlaTHiDa_with_TTT():
 
         # ======= The necessary steps to plot a single glacier! =========
 
-        gtd.best_bias(gdir, beta_min=0.001, beta_max=1000)
+        gtd.best_bias(gdir, rgi_id=RGI_ID, beta_min=0.001, beta_max=1000)
 
         if gtd.multiplier < 0.1:
             multiplier = 0.1

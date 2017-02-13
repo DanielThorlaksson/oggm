@@ -17,6 +17,10 @@ class GlaThiDa:
         self.RGI_Reg = None
         self.GlaThiDa_ID = None
         self.profile_masks = None
+        self.GTD_THICKNESS = None
+        self.rgi_id = None
+        self.within_rgi = None
+
 
     def read_pickle(self, path, RGI_Reg, GlaThiDa_ID):
         """Reads the pickle file from the RGI GlaThiDa linkage"""
@@ -27,6 +31,8 @@ class GlaThiDa:
         self.GTD_THICKNESS = df.THICKNESS
         self.RGI_Reg = RGI_Reg
         self.GlaThiDa_ID = GlaThiDa_ID
+        self.rgi_id = df.rgi_id.values
+        self.within_rgi = df.found.values
         #self.RGI_ID =
         return self
 
@@ -97,16 +103,17 @@ class GlaThiDa:
 
         return self
 
-    def best_bias(self, gdir, beta_min=0.1, beta_max=10, n_bands=10):
+    def best_bias(self, gdir, rgi_id, beta_min=0.1, beta_max=10, n_bands=10):
         """WIP: Finds the best bias with optimization, where the bias is a virtual bias with elevation weights. """
 
-        # Read the major flowline
-        fl = gdir.read_pickle('inversion_flowlines', div_id=-1)
-        # sparsify to 10 bands
-        # on second thought, I think this should be defined exactly as the flowlines
-        # on a third thought, the centerlines-flowlines defnitions is not quite that simple ...
-        indexes = np.round(np.linspace(0, len(fl[0].surface_h)-1, num=(n_bands+1))).astype(int)
-        elevations = fl[0].surface_h[indexes]
+        # OBSOLETE, CHANGE TO DEM!
+        # # Read the major flowline
+        # fl = gdir.read_pickle('inversion_flowlines', div_id=-1)
+        # # sparsify to 10 bands
+        # # on second thought, I think this should be defined exactly as the flowlines
+        # # on a third thought, the centerlines-flowlines defnitions is not quite that simple ...
+        # indexes = np.round(np.linspace(0, len(fl[0].surface_h)-1, num=(n_bands+1))).astype(int)
+        # elevations = fl[0].surface_h[indexes]
 
 
         # load the topo, GlaThiDa usually has elevation also saved. However to be "locally constant" the OGGM DEM on
@@ -114,6 +121,8 @@ class GlaThiDa:
         grids_file = gdir.get_filepath('gridded_data', div_id=0)
         with netCDF4.Dataset(grids_file) as nc:
             topo = nc.variables['topo'][:]
+
+        elevations = np.linspace(np.min(topo), np.max(topo), num=(n_bands+1))
 
         df = pd.DataFrame()
         df['i'] = self.i
@@ -123,13 +132,30 @@ class GlaThiDa:
         for point in df.itertuples():
             df.loc[point.Index, 'ele'] = topo[point.j, point.i]
 
-        # The elevations are from highest down to lowest!
+        # Find the correspoinding elevation band to give weight!
         df['ele_band'] = -1
         for k in range(1, n_bands):
-            df.loc[(df.ele <= elevations[k-1]) & (df.ele > elevations[k]), 'ele_band'] = k
+            df.loc[(df.ele >= elevations[k-1]) & (df.ele < elevations[k]), 'ele_band'] = k
+
+        df['rgi_id'] = self.rgi_id
+        df['within_rgi'] = self.within_rgi
+
+        # Are the points actually within the correct rgi shape?
+        df = df.loc[df.within_rgi, :]
+        df = df.loc[df.rgi_id == rgi_id]
 
         # Points still with -1 are outside of glacier... play no role in bias
+        # I think here I am just redoing the last two lines
         df = df.loc[df.ele_band != -1]
+
+        if df.shape[0] < 1:
+            # THis should be a log message
+            print('GlaThiDa_ID: {}, RGI_ID: {}, has no point within.'.format(self.GlaThiDa_ID, rgi_id))
+            self.best_A = None
+            self.multiplier = None
+            return self
+
+
         # Is this nececcary? it will alsways be close to zero
         self.best_ele_bias = 100 # This will be updated within the optimization loop
 
