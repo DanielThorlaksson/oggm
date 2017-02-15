@@ -20,6 +20,7 @@ class GlaThiDa:
         self.GTD_THICKNESS = None
         self.rgi_id = None
         self.within_rgi = None
+        self.n_bias_points = None
 
 
     def read_pickle(self, path, RGI_Reg, GlaThiDa_ID):
@@ -42,7 +43,7 @@ class GlaThiDa:
         self.i, self.j = crs.transform(self.POINT_LON.values, self.POINT_LAT.values, nearest=True)
         return self
 
-    def Delta_Thickness(self, gdir):
+    def Delta_Thickness(self, gdir, rgi_id):
         """Findes the difference of the oggm model output and the GlaThiDa points
         ====> becoming obsolete, moved to 'best bias' """
         self.OGGM_THICK = np.zeros(self.GTD_THICKNESS.shape)
@@ -63,7 +64,11 @@ class GlaThiDa:
 
         thick = np.where(mask, thick, np.NaN)
 
-
+        # quick and dirty, get rid of points in other rgi shapes.
+        # Dont know if it will be a probelm, but now the thickness is not written
+        mask = self.rgi_id == rgi_id
+        self.j = self.j[mask]
+        self.i = self.i[mask]
 
         for k in range(self.j.shape[0]):
             self.OGGM_THICK[k] = thick[self.j[k], self.i[k]]
@@ -128,6 +133,15 @@ class GlaThiDa:
         df['i'] = self.i
         df['j'] = self.j
         df['GTD_THICKNESS'] = self.GTD_THICKNESS.values
+        df['rgi_id'] = self.rgi_id
+        df['within_rgi'] = self.within_rgi
+
+        # Are the points actually within a rgi shape?
+        df = df.loc[df.within_rgi, :]
+
+        # Get rid of all of the points outside and in different rgi shapes
+        df = df.loc[df.rgi_id == rgi_id]
+
         df['ele'] = np.NaN
         for point in df.itertuples():
             df.loc[point.Index, 'ele'] = topo[point.j, point.i]
@@ -137,16 +151,10 @@ class GlaThiDa:
         for k in range(1, n_bands):
             df.loc[(df.ele >= elevations[k-1]) & (df.ele < elevations[k]), 'ele_band'] = k
 
-        df['rgi_id'] = self.rgi_id
-        df['within_rgi'] = self.within_rgi
-
-        # Are the points actually within the correct rgi shape?
-        df = df.loc[df.within_rgi, :]
-        df = df.loc[df.rgi_id == rgi_id]
-
         # Points still with -1 are outside of glacier... play no role in bias
         # I think here I am just redoing the last two lines
         df = df.loc[df.ele_band != -1]
+        self.n_bias_points = df.shape[0]
 
         if df.shape[0] < 1:
             # THis should be a log message
@@ -156,7 +164,7 @@ class GlaThiDa:
             return self
 
 
-        # Is this nececcary? it will alsways be close to zero
+        # Is this nececcary? it will alsways be close to  ... except for when it is not
         self.best_ele_bias = 100 # This will be updated within the optimization loop
 
         # Here starts the job starts

@@ -49,17 +49,25 @@ def GlaTHiDa_with_TTT():
     glaciers = glaciers.loc[np.abs(glaciers.Delta_Time) < 11]
     print('N temporally filtered glaciers:', glaciers.shape[0])
 
+    # The shape file of the correct RGI region with all of the glacier outlines in that region
     RGI_Region_shp = '/home/daniel/Dropbox/dev/data/rgi50/11_rgi50_CentralEurope.shp'
     RGI_Region = str(11)
+    # where the figures will be saved which this code makes:
     fig_path = '/home/daniel/Dropbox/dev/OGGM_vs_GlaThiDa/figs/'
+    # The extension of the figures, change to pdf for final run
     fig_ext = '.png'
+    # The path of each individual glacier, output from the linkange
     GlaThiDa_Path = '/home/daniel/Dropbox/dev/data/ttt_2_rgi'
     run_dir = os.path.join(current_dir, 'GlaThiDa_run')
     entities = gpd.read_file(RGI_Region_shp)
 
-    # glaciers = glaciers.iloc[1:3, :]
+    glaciers = glaciers.iloc[58::, :]
+    n = 0
 
     for glacier in glaciers.itertuples():
+
+        print('run number: ', n)
+        n += 1
 
         GlaThiDa_ID = str(glacier.GlaThiDa_ID)
         RGI_ID = str(glacier.rgi_id)
@@ -131,7 +139,7 @@ def GlaTHiDa_with_TTT():
                                        add_nc_name=True,
                                        smooth=True)
 
-        gtd.Delta_Thickness(gdir)
+        gtd.Delta_Thickness(gdir, rgi_id=RGI_ID)
         gdir.write_pickle(gtd, 'GlaThiDa')
 
         to_write = oggm.utils.single_glacier_characteristics(gdir=gdir)
@@ -140,8 +148,13 @@ def GlaTHiDa_with_TTT():
         to_write['GlaThiDa_ID'] = gtd.GlaThiDa_ID
         to_write['best_A'] = gtd.best_A
         to_write['multiplier'] = gtd.multiplier
-        to_write['My_Volume'] = v
-        to_write['My_Area'] = gdir.rgi_area_km2 * 1e6
+        to_write['best_elevation_bias'] = gtd.best_ele_bias
+        to_write['n_bias_points'] = gtd.n_bias_points
+
+        # GlaThiDa technical info
+        to_write['GlaThiDa_year'] = glacier.SURVEY_DATE
+        to_write['Delta_Survey_Date'] = glacier.Delta_Time
+
         name = current_dir + '/GlaThiDa_OGGM_data.csv'
 
         if os.path.isfile(name):
@@ -158,8 +171,9 @@ def GlaTHiDa_with_TTT():
             os.makedirs(fig_path)
 
         plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', GTD=True)
-        #name = fig_path + 'fig_same.png'
-        plt.savefig('{}{}_same{}'.format(fig_path, RGI_ID, fig_ext))
+        # name = fig_path + 'fig_same.png'
+        name = '{}{}_same{}'.format(fig_path, RGI_ID, fig_ext)
+        plt.savefig(name)
         plt.clf()
 
         plot_kesselwf.plot_distributed_thickness(gdir, how='per_interpolation', Delta_GTD=True) #,
@@ -193,6 +207,9 @@ def GlaTHiDa_with_TTT():
         name = '{}{}_catchment{}'.format(fig_path, RGI_ID, fig_ext)
         plt.savefig(name)
         plt.clf()
+
+        # I dont why I need this line, I should not be opining figures
+        plt.close()
 
 if __name__ == "__main__":
     GlaTHiDa_with_TTT()
